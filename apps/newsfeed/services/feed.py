@@ -55,17 +55,14 @@ async def get_feed(
 
     if primary_filter and primary_filter.lower() != "all":
         query = query.where(
-            NewsAnalytics.primary_filter.contains(
-                cast([primary_filter], ARRAY(VARCHAR))
+            NewsAnalytics.primary_filter.any(primary_filter)
             )
-        )
 
     if secondary_filter:
         query = query.where(
-            NewsAnalytics.secondary_filter.contains(
-                cast([secondary_filter], ARRAY(VARCHAR))
+                NewsAnalytics.secondary_filter.any(secondary_filter)
             )
-        )
+    
 
     result = await db.execute(query)
     rows = result.all()

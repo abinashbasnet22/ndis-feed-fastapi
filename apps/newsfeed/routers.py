@@ -4,7 +4,7 @@ from typing import Optional
 
 from core.database import get_db
 from apps.newsfeed import services
-from apps.newsfeed.schemas import FeedResponse, NewsFeedItem
+from apps.newsfeed.schemas import FeedResponse, NewsFeedItem, KeywordFeedResponse
 
 router = APIRouter(prefix="/newsfeed", tags=["Newsfeed"])
 
@@ -67,3 +67,18 @@ async def get_weekly_stats(
     db: AsyncSession = Depends(get_db),
 ):
     return await services.get_weekly_stats(db)
+
+
+@router.get("/keyword-feed", response_model=KeywordFeedResponse)
+async def get_news_by_keyword(
+    keyword: str           = Query(..., description="e.g. Price Guide History"),
+    cursor:  Optional[int] = Query(None),
+    limit:   int           = Query(20),
+    db: AsyncSession = Depends(get_db),
+):
+    return await services.get_news_by_keyword(
+        db=db,
+        keyword=keyword,
+        cursor=cursor,
+        limit=limit,
+    )

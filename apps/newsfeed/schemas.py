@@ -35,6 +35,24 @@ class KeyElementSchema(BaseModel):
     geographic_scope:  Optional[str]
 
 
+class KeywordNewsItem(BaseModel):
+    id:                       int
+    headline:                 Optional[str]
+    snippet:                  Optional[str]
+    published_date:           Optional[str]
+    time_ago:                 Optional[str]
+    sentiment_overall:        Optional[str]
+    sentiment_positive_pct:   Optional[int]
+    sentiment_negative_pct:   Optional[int]
+    sentiment_neutral_pct:    Optional[int]
+    keywords:                 Optional[List[str]]
+    urgency:                  Optional[str]
+    impactness:               Optional[int]
+    url:                      Optional[str]
+
+    model_config = {"from_attributes": True}    
+
+
 class NewsAnalyticsSchema(BaseModel):
     id:                 int
     news_id:            Optional[int]
@@ -106,5 +124,14 @@ class NewsFeedItem(BaseModel):
 
 class FeedResponse(BaseModel):
     items:       List[NewsFeedItem]
+    next_cursor: Optional[int] = None
+    has_more:    bool
+
+
+
+
+class KeywordFeedResponse(BaseModel):
+    keyword:     str
+    items:       List[KeywordNewsItem]
     next_cursor: Optional[int] = None
     has_more:    bool
