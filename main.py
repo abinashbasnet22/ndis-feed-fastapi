@@ -18,6 +18,7 @@ app.include_router(newsfeed_router, prefix="/caremate")
 app.include_router(events_router,   prefix="/caremate")
 
 
-# only mount if directory exists and has content
-if os.path.exists("static"):
+# mount static only in local development
+# on Railway images are served from Cloudflare R2
+if os.path.exists("static") and os.path.isdir("static") and os.getenv("ENVIRONMENT") != "production":
     app.mount("/static", StaticFiles(directory="static"), name="static")
