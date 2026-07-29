@@ -55,5 +55,11 @@ logs/
 # --- Alembic (keep migrations, ignore local db state if any) ---
 # alembic/versions/*.pyc
 ndis_backup.dump
-static
+
 imagename.py
+
+# ignore photo files but keep the folder structure
+static/photos/**/*.jpg
+static/photos/**/*.jpeg
+static/photos/**/*.png
+static/photos/**/*.webp

@@ -16,5 +16,8 @@ app.add_middleware(
 
 app.include_router(newsfeed_router, prefix="/caremate")
 app.include_router(events_router,   prefix="/caremate")
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
+# only mount if directory exists and has content
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
