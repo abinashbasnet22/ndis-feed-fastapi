@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apps.newsfeed.routers import router as newsfeed_router
 from apps.events.routers import router as events_router
 from fastapi.staticfiles import StaticFiles
-
+import os
 
 app = FastAPI(title="CareMate API")
 
