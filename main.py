@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apps.newsfeed.routers import router as newsfeed_router
 from apps.events.routers import router as events_router
+from fastapi.staticfiles import StaticFiles
+
 
 app = FastAPI(title="CareMate API")
 
@@ -14,4 +16,5 @@ app.add_middleware(
 
 app.include_router(newsfeed_router, prefix="/caremate")
 app.include_router(events_router,   prefix="/caremate")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 

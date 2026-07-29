@@ -3,7 +3,7 @@ from sqlalchemy import select, desc, cast
 from sqlalchemy.dialects.postgresql import ARRAY, VARCHAR
 from typing import Optional
 from datetime import datetime, date
-
+from apps.newsfeed.services.photos import get_photo_for_article
 from apps.newsfeed.models import News, NewsAnalytics
 
 
@@ -72,10 +72,16 @@ async def get_feed(
 
     items = []
     for news, analytics in rows:
+        photo_url = await get_photo_for_article(
+            db=db,
+            primary_filter=analytics.primary_filter if analytics else None,
+            secondary_filter=analytics.secondary_filter if analytics else None,
+            )
         items.append({
             "news":      news,
-            "analytics": analytics,       # raw ORM row (or None) — schema handles shaping
+            "analytics": analytics,
             "time_ago":  get_time_ago(news.published_date),
+            "photo_url": photo_url,
         })
 
     next_cursor = rows[-1][0].id if has_more and rows else None

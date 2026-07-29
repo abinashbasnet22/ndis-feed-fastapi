@@ -55,3 +55,5 @@ logs/
 # --- Alembic (keep migrations, ignore local db state if any) ---
 # alembic/versions/*.pyc
 ndis_backup.dump
+static
+imagename.py

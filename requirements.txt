@@ -7,3 +7,4 @@ pydantic
 asyncpg==0.31.0
 slowapi==0.1.9
 pydantic-settings
+boto3

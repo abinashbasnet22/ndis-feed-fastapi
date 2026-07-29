@@ -8,6 +8,7 @@ class NewsSchema(BaseModel):
     source:        Optional[str]
     snippet:       Optional[str]
     summary:       Optional[str]
+    read_time:     Optional[str]
     author:        Optional[str]
     published_at:  Optional[str]
     published_date: Optional[str]
@@ -120,6 +121,7 @@ class NewsFeedItem(BaseModel):
     news:       NewsSchema
     analytics:  Optional[NewsAnalyticsSchema] = None
     time_ago:   Optional[str] = None
+    photo_url:  Optional[str] = None  
 
 
 class FeedResponse(BaseModel):

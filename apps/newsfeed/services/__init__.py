@@ -3,3 +3,4 @@ from .trending import get_trending, get_emerging_keywords
 from .sentiment import get_sector_sentiment
 from .stats import get_weekly_stats
 from .keyword_filter import get_news_by_keyword
+from .photos import get_photo_for_article

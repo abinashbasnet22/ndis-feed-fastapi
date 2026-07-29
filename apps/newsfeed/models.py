@@ -11,6 +11,7 @@ class News(Base):
     item_type           = Column(String)
     title               = Column(Text)
     snippet             = Column(Text)
+    read_time           =Column(String)
     author              = Column(String)
     published_at        = Column(String)
     ndis_relevant       = Column(Boolean)
@@ -52,3 +53,12 @@ class NewsAnalytics(Base):
     key_element_geographic_scope = Column(Text)
 
     created_at               = Column(TIMESTAMP(timezone=True))
+
+
+class StockPhoto(Base):
+    __tablename__ = "stock_photos"
+
+    id          = Column(Integer, primary_key=True)
+    topic       = Column(String, index=True)
+    filename    = Column(String)
+    used_count  = Column(Integer, default=0)
