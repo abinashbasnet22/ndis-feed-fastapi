@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     R2_SECRET_KEY:          str = ""
     R2_ACCOUNT_ID:          str = ""
     R2_BUCKET_NAME:         str = ""
+    R2_PUBLIC_URL:          str = ""
 
     # AWS S3 (alternative — swap in if moving to AWS)
     # AWS_ACCESS_KEY_ID:    str = ""

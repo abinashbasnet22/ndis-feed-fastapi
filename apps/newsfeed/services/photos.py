@@ -17,7 +17,7 @@ def get_base_url() -> str:
     if settings.ENVIRONMENT == "production":
         # Cloudflare R2 public bucket URL
         # get this from R2 dashboard → your bucket → Settings → Public URL
-        return f"https://pub-{settings.R2_ACCOUNT_ID}.r2.dev/photos"
+        return f"{settings.R2_PUBLIC_URL}/photos"
 
         # AWS S3 — uncomment below and comment above if switching to AWS
         # return f"https://{settings.S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/photos"
