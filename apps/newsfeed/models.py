@@ -21,6 +21,8 @@ class News(Base):
     categories          = Column(ARRAY(Text))
     links               = Column(JSON)
     created_at          = Column(TIMESTAMP(timezone=True))
+    image_filename  = Column(String, nullable=True)
+    image_topic     = Column(String, nullable=True)
 
 
 class NewsAnalytics(Base):

@@ -13,17 +13,35 @@ router = APIRouter(prefix="/newsfeed", tags=["Newsfeed"])
 
 @router.get("/feed", response_model=FeedResponse)
 async def get_feed(
-    cursor: Optional[int] = None,
-    limit: int = 20,
-    primary_filter: Optional[str] = None,
-    secondary_filter: Optional[str] = None,
+    cursor:           Optional[int] = Query(None),
+    limit:            int           = Query(20),
+    primary_filter:   Optional[str] = Query(None),
+    secondary_filter: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     return await services.get_feed(
-        db, cursor=cursor, limit=limit,
-        primary_filter=primary_filter, secondary_filter=secondary_filter,
+        db=db,
+        cursor=cursor,
+        limit=limit,
+        primary_filter=primary_filter,
+        secondary_filter=secondary_filter, 
     )
 
+@router.get("/feed/anchor", response_model=FeedResponse)
+async def get_feed_at_article(
+    anchor_id:        int            = Query(...),
+    limit:            int            = Query(20),
+    primary_filter:   Optional[str]  = Query(None),
+    secondary_filter: Optional[str]  = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    return await services.get_feed_at_article(
+        db=db,
+        anchor_id=anchor_id,
+        limit=limit,
+        primary_filter=primary_filter,
+        secondary_filter=secondary_filter,
+    )
 
 @router.get("/news/{news_id}", response_model=NewsFeedItem)
 async def get_news_by_id(

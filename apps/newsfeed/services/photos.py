@@ -1,95 +1,154 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from typing import Optional
-import random
 
-from apps.newsfeed.models import StockPhoto
+from apps.newsfeed.models import News, StockPhoto
 from config.base import settings
+from core.database import SessionLocal
 
-# ── Cloudflare R2 public URL ─────────────────────────────────────────
-# R2 public URL format after enabling public access on bucket:
-# https://pub-xxxx.r2.dev/photos/policy/policy_1.jpg
-#
-# ── AWS S3 public URL (commented out — swap in if moving to AWS) ─────
-# f"https://{settings.S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/photos"
+
+# ── primary filter mapping ───────────────────────────────────────────
+# "other/others" in primary → None (skip → fall to general)
+PRIMARY_MAP = {
+    "other":     None,
+    "others":    None,
+    "policy":    "policy",
+    "funding":   "funding",
+    "community": "community",
+    "workforce": "workforce",
+    "general":   "general",
+}
+
+# ── secondary filter mapping ─────────────────────────────────────────
+# "other/others" in secondary → None (skip → use primary only)
+SECONDARY_MAP = {
+    "other":         None,
+    "others":        None,
+    "provider":      "provider",
+    "participant":   "participant",
+    "support_coord": "support_coord",
+    "allied_health": "allied_health",
+}
+
 
 def get_base_url() -> str:
     if settings.ENVIRONMENT == "production":
-        # Cloudflare R2 public bucket URL
-        # get this from R2 dashboard → your bucket → Settings → Public URL
         return f"{settings.R2_PUBLIC_URL}/photos"
-
-        # AWS S3 — uncomment below and comment above if switching to AWS
-        # return f"https://{settings.S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/photos"
-    else:
-        # local development — serve from FastAPI static files
-        return "http://localhost:8000/static/photos"
-
-
-VALID_PRIMARIES   = {"policy", "funding", "community", "workforce", "general"}
-VALID_SECONDARIES = {"provider", "participant", "support_coordinator", "allied_health"}
+    return "http://localhost:8000/static/photos"
 
 
 def clean(value: str) -> str:
     return value.lower().strip().replace(" ", "_")
 
 
-async def get_least_used(db: AsyncSession, topic: str) -> Optional[StockPhoto]:
-    result = await db.execute(
-        select(StockPhoto)
-        .where(StockPhoto.topic == topic)
-        .order_by(StockPhoto.used_count.asc())
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
+def get_all_topics(
+    primary_filter:   Optional[list] = None,
+    secondary_filter: Optional[list] = None,
+) -> list:
+    """
+    build ordered list of topics to check for photo selection
+    priority 1 → combined  e.g. policy_provider
+    priority 2 → primary only  e.g. policy
+    priority 3 → general fallback
+    other/others are mapped to None and skipped
+    """
+
+    # map and filter valid primaries
+    valid_primaries = []
+    for p in (primary_filter or []):
+        mapped = PRIMARY_MAP.get(clean(p))
+        if mapped and mapped not in valid_primaries:
+            valid_primaries.append(mapped)
+
+    # map and filter valid secondaries
+    valid_secondaries = []
+    for s in (secondary_filter or []):
+        mapped = SECONDARY_MAP.get(clean(s))
+        if mapped and mapped not in valid_secondaries:
+            valid_secondaries.append(mapped)
+
+    topics = []
+
+    # priority 1 — all combinations of primary + secondary
+    for p in valid_primaries:
+        for s in valid_secondaries:
+            topics.append(f"{p}_{s}")
+
+    # priority 2 — primary only
+    for p in valid_primaries:
+        topics.append(p)
+
+    # priority 3 — general fallback always last
+    topics.append("general")
+
+    return topics
 
 
-async def get_photo_for_article(
+async def get_or_assign_photo(
     db: AsyncSession,
+    news: News,
     primary_filter:   Optional[list] = None,
     secondary_filter: Optional[list] = None,
 ) -> Optional[str]:
+    """
+    if news already has image assigned → return it directly (same image every time)
+    if not → find least used image across all topic combinations → save to news → return it
+    """
 
-    # extract all valid primaries — randomly pick one
-    valid_primaries = [
-        clean(p) for p in (primary_filter or [])
-        if clean(p) in VALID_PRIMARIES
-    ]
+    # already assigned — return same image always
+    if news.image_filename and news.image_topic:
+        return f"{get_base_url()}/{news.image_topic}/{news.image_filename}"
 
-    # extract all valid secondaries — ignore "others" or unknown
-    valid_secondaries = [
-        clean(s) for s in (secondary_filter or [])
-        if clean(s) in VALID_SECONDARIES
-    ]
+    # use separate session for write — avoids conflict with outer feed session
+    async with SessionLocal() as write_db:
+        try:
+            # re-fetch news in this session
+            result = await write_db.execute(
+                select(News).where(News.id == news.id)
+            )
+            fresh_news = result.scalar_one_or_none()
 
-    # randomly pick one from each list
-    primary   = random.choice(valid_primaries)   if valid_primaries   else None
-    secondary = random.choice(valid_secondaries) if valid_secondaries else None
+            # check again — another request may have assigned it already
+            if fresh_news and fresh_news.image_filename and fresh_news.image_topic:
+                return f"{get_base_url()}/{fresh_news.image_topic}/{fresh_news.image_filename}"
 
-    photo = None
+            # build topic priority list
+            topics = get_all_topics(primary_filter, secondary_filter)
 
-    # priority 1 — combined topic e.g. policy_provider
-    if primary and secondary:
-        photo = await get_least_used(db, f"{primary}_{secondary}")
+            # find least used photo across all valid topics
+            photo_result = await write_db.execute(
+                select(StockPhoto)
+                .where(StockPhoto.topic.in_(topics))
+                .order_by(StockPhoto.used_count.asc())
+                .limit(1)
+            )
+            photo = photo_result.scalar_one_or_none()
 
-    # priority 2 — primary only e.g. policy
-    if not photo and primary:
-        photo = await get_least_used(db, primary)
+            if not photo:
+                return None
 
-    # priority 3 — general fallback
-    if not photo:
-        photo = await get_least_used(db, "general")
+            # save permanently to news row
+            await write_db.execute(
+                update(News)
+                .where(News.id == news.id)
+                .values(
+                    image_filename=photo.filename,
+                    image_topic=photo.topic,
+                )
+            )
 
-    if not photo:
-        return None
+            # increment photo used count
+            await write_db.execute(
+                update(StockPhoto)
+                .where(StockPhoto.id == photo.id)
+                .values(used_count=photo.used_count + 1)
+            )
 
-    # increment used count so next article gets a different photo
-    await db.execute(
-        update(StockPhoto)
-        .where(StockPhoto.id == photo.id)
-        .values(used_count=photo.used_count + 1)
-    )
-    await db.commit()
+            await write_db.commit()
 
-    base_url = get_base_url()
-    return f"{base_url}/{photo.topic}/{photo.filename}"
+            return f"{get_base_url()}/{photo.topic}/{photo.filename}"
+
+        except Exception as e:
+            await write_db.rollback()
+            print(f"photo assign error for news {news.id}: {e}")
+            return None

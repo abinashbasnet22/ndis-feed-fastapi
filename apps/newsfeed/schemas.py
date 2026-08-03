@@ -15,6 +15,8 @@ class NewsSchema(BaseModel):
     categories:    Optional[List[str]]
     url:           Optional[str]
     item_type:     Optional[str]
+    image_filename: Optional[str]
+    image_topic:    Optional[str]
 
     model_config = {"from_attributes": True}
 
@@ -37,7 +39,7 @@ class KeyElementSchema(BaseModel):
 
 
 class KeywordNewsItem(BaseModel):
-    id:                       int
+    news_id:                       int
     headline:                 Optional[str]
     snippet:                  Optional[str]
     published_date:           Optional[str]
@@ -50,6 +52,8 @@ class KeywordNewsItem(BaseModel):
     urgency:                  Optional[str]
     impactness:               Optional[int]
     url:                      Optional[str]
+    photo_url:                Optional[str]
+
 
     model_config = {"from_attributes": True}    
 
@@ -128,6 +132,7 @@ class FeedResponse(BaseModel):
     items:       List[NewsFeedItem]
     next_cursor: Optional[int] = None
     has_more:    bool
+    anchor_id:   Optional[int] = None
 
 
 

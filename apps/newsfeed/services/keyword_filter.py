@@ -4,7 +4,7 @@ from typing import Optional
 
 from apps.newsfeed.models import News, NewsAnalytics
 from apps.newsfeed.services.feed import get_time_ago
-
+from apps.newsfeed.services.photos import get_or_assign_photo
 
 async def get_news_by_keyword(
     db: AsyncSession,
@@ -36,8 +36,14 @@ async def get_news_by_keyword(
     for row in rows:
         news      = row[0]
         analytics = row[1]
+        photo_url = await get_or_assign_photo(
+            db=db,
+            news=news,
+            primary_filter=analytics.primary_filter   if analytics else None,
+            secondary_filter=analytics.secondary_filter if analytics else None,
+        )
         items.append({
-            "id":                    news.id,
+            "news_id":                    news.id,
             "headline":              analytics.headline or news.title,
             "snippet":               news.snippet,
             "published_date":        news.published_date,
@@ -50,6 +56,7 @@ async def get_news_by_keyword(
             "urgency":               analytics.urgency,
             "impactness":            analytics.impactness,
             "url":                   news.url,
+            "photo_url":              photo_url,
         })
 
     next_cursor = rows[-1][0].id if has_more and rows else None
