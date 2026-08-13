@@ -4,6 +4,9 @@ from typing import Optional
 from datetime import datetime, date
 from apps.newsfeed.services.photos import get_or_assign_photo
 from apps.newsfeed.models import News, NewsAnalytics
+from apps.social.services import get_engagement_map
+
+DEFAULT_ENGAGEMENT = {"like_count": 0, "comment_count": 0, "is_liked": False, "is_bookmarked": False}
 
 
 def get_time_ago(published_date: str) -> str:
@@ -33,8 +36,13 @@ def get_time_ago(published_date: str) -> str:
     except (ValueError, TypeError):
         return ""
 
-async def build_items(db, rows):
-    """shared helper — builds items list from rows"""
+async def build_items(db, rows, current_user_id: Optional[int] = None):
+    """shared helper — builds items list from rows.
+    current_user_id is optional so this still works for any call site that
+    hasn't been updated to pass it — engagement just falls back to zeros/False."""
+    news_ids = [row[0].id for row in rows]
+    engagement_map = await get_engagement_map(db, news_ids, current_user_id)
+
     items = []
     for row in rows:
         news      = row[0]
@@ -48,10 +56,11 @@ async def build_items(db, rows):
         )
 
         items.append({
-            "news":      news,
-            "analytics": analytics,
-            "time_ago":  get_time_ago(news.published_date),
-            "photo_url": photo_url,
+            "news":       news,
+            "analytics":  analytics,
+            "time_ago":   get_time_ago(news.published_date),
+            "photo_url":  photo_url,
+            "engagement": engagement_map.get(news.id, DEFAULT_ENGAGEMENT),
         })
     return items
 
@@ -61,6 +70,7 @@ async def get_feed(
     limit: int = 20,
     primary_filter: Optional[str] = None,
     secondary_filter: Optional[str] = None,
+    current_user_id: Optional[int] = None,
 ):
     query = (
         select(News, NewsAnalytics)
@@ -90,7 +100,7 @@ async def get_feed(
     has_more = len(rows) > limit
     rows = rows[:limit]
 
-    items = await build_items(db, rows)
+    items = await build_items(db, rows, current_user_id)
     next_cursor = rows[-1][0].id if has_more and rows else None
     return {
         "items":       items,
@@ -105,6 +115,7 @@ async def get_feed_at_article(
     limit: int = 20,
     primary_filter: Optional[str] = None,
     secondary_filter: Optional[str] = None,
+    current_user_id: Optional[int] = None,
 ):
     query = (
         select(News, NewsAnalytics)
@@ -130,7 +141,7 @@ async def get_feed_at_article(
     rows     = result.all()
     has_more = len(rows) > limit
     rows     = rows[:limit]
-    items    = await build_items(db, rows)
+    items    = await build_items(db, rows, current_user_id)
 
     next_cursor = rows[-1][0].id if has_more and rows else None
     return {
@@ -141,7 +152,7 @@ async def get_feed_at_article(
     }
 
 
-async def get_news_by_id(db: AsyncSession, news_id: int):
+async def get_news_by_id(db: AsyncSession, news_id: int, current_user_id: Optional[int] = None):
     result = await db.execute(
         select(News, NewsAnalytics)
         .outerjoin(NewsAnalytics, NewsAnalytics.news_id == News.id)
@@ -161,9 +172,12 @@ async def get_news_by_id(db: AsyncSession, news_id: int):
         secondary_filter=analytics.secondary_filter if analytics else None,
     )
 
+    engagement_map = await get_engagement_map(db, [news.id], current_user_id)
+
     return {
-        "news":      news,
-        "analytics": analytics,
-        "time_ago":  get_time_ago(news.published_date),
-        "photo_url": photo_url,
+        "news":       news,
+        "analytics":  analytics,
+        "time_ago":   get_time_ago(news.published_date),
+        "photo_url":  photo_url,
+        "engagement": engagement_map.get(news.id, DEFAULT_ENGAGEMENT),
     }

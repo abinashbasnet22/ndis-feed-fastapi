@@ -8,3 +8,10 @@ asyncpg==0.31.0
 slowapi==0.1.9
 pydantic-settings
 boto3
+google-auth
+python-multipart
+passlib[bcrypt]
+python-jose[cryptography]
+requests
+pydantic[email]
+bcrypt==4.0.1

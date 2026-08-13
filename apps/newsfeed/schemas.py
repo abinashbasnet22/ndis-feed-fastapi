@@ -69,7 +69,8 @@ class NewsAnalyticsSchema(BaseModel):
     action_required:    Optional[bool]
     action_summary:     Optional[str]
     action_deadline:    Optional[str]
-    target_audience:    Optional[List[str]]
+    target_audience:    Optional[List[str]] 
+    stakeholders:       Optional[List[str]] = None
     affected_states:    Optional[List[str]]
     primary_filter:     Optional[List[str]]
     secondary_filter:   Optional[List[str]]
@@ -119,14 +120,19 @@ class NewsAnalyticsSchema(BaseModel):
                 "geographic_scope": get("key_element_geographic_scope"),
             },
         }
-
+    
+class EngagementSchema(BaseModel):
+    like_count:     int = 0
+    comment_count:  int = 0
+    is_liked:       bool = False
+    is_bookmarked:  bool = False
 
 class NewsFeedItem(BaseModel):
     news:       NewsSchema
     analytics:  Optional[NewsAnalyticsSchema] = None
     time_ago:   Optional[str] = None
     photo_url:  Optional[str] = None  
-
+    engagement:  Optional[EngagementSchema] = None
 
 class FeedResponse(BaseModel):
     items:       List[NewsFeedItem]

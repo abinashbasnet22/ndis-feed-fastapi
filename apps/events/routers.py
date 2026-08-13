@@ -6,7 +6,7 @@ from core.database import get_db
 from apps.events import services
 from apps.events.schemas import EventsResponse
 
-router = APIRouter(prefix="/events", tags=["Events"])
+router = APIRouter(prefix="/events", tags=["events"])
 
 
 # ── events feed (infinite scroll) ───────────────────────────────────

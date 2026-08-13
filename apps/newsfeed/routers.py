@@ -5,8 +5,10 @@ from typing import Optional
 from core.database import get_db
 from apps.newsfeed import services
 from apps.newsfeed.schemas import FeedResponse, NewsFeedItem, KeywordFeedResponse
+from apps.auth.services import get_current_user
+from apps.auth.models import User
 
-router = APIRouter(prefix="/newsfeed", tags=["Newsfeed"])
+router = APIRouter(prefix="/newsfeed", tags=["newsfeed"])
 
 
 # ── feed (infinite scroll) ───────────────────────────────────────────
@@ -17,6 +19,7 @@ async def get_feed(
     limit:            int           = Query(20),
     primary_filter:   Optional[str] = Query(None),
     secondary_filter: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     return await services.get_feed(
@@ -24,7 +27,8 @@ async def get_feed(
         cursor=cursor,
         limit=limit,
         primary_filter=primary_filter,
-        secondary_filter=secondary_filter, 
+        secondary_filter=secondary_filter,
+        current_user_id=current_user.id,
     )
 
 @router.get("/feed/anchor", response_model=FeedResponse)
@@ -33,6 +37,7 @@ async def get_feed_at_article(
     limit:            int            = Query(20),
     primary_filter:   Optional[str]  = Query(None),
     secondary_filter: Optional[str]  = Query(None),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     return await services.get_feed_at_article(
@@ -41,14 +46,16 @@ async def get_feed_at_article(
         limit=limit,
         primary_filter=primary_filter,
         secondary_filter=secondary_filter,
+        current_user_id=current_user.id,
     )
 
 @router.get("/news/{news_id}", response_model=NewsFeedItem)
 async def get_news_by_id(
     news_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await services.get_news_by_id(db, news_id)
+    result = await services.get_news_by_id(db, news_id, current_user_id=current_user.id)
     if not result:
         raise HTTPException(status_code=404, detail="Article not found")
     return result
